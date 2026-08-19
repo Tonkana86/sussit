@@ -1,6 +1,10 @@
-import { db } from "@/db/client";
-import { listings, scamReports, sources, searchLogs } from "@/db/schema";
-import { eq, like, or } from "drizzle-orm";
+import {
+  listSources,
+  findApprovedScamReportMatch,
+  findListingExact,
+  findListingFuzzy,
+  insertSearchLog as repoInsertSearchLog,
+} from "@/db/repo";
 
 export type VerifyTier = "confirmed" | "flagged" | "not_found";
 
@@ -40,7 +44,7 @@ export interface VerifyResult {
 export async function verifyQuery(rawQuery: string): Promise<VerifyResult> {
   const query = rawQuery.trim();
 
-  const allSources = await db.select().from(sources);
+  const allSources = await listSources();
   const sourcesChecked = allSources.map((s) => s.name);
 
   if (!query) {
@@ -54,18 +58,7 @@ export async function verifyQuery(rawQuery: string): Promise<VerifyResult> {
 
   // 1. Check scam report database first — a known scam pattern should surface
   //    even if a matching fake listing doesn't exist anywhere else.
-  const flaggedMatches = await db
-    .select()
-    .from(scamReports)
-    .where(
-      or(
-        like(scamReports.reportedReferenceNumber, `%${query}%`),
-        like(scamReports.reportedCompanyName, `%${query}%`)
-      )
-    )
-    .limit(1);
-
-  const approvedFlag = flaggedMatches.find((r) => r.status === "approved");
+  const approvedFlag = await findApprovedScamReportMatch(query);
   if (approvedFlag) {
     return {
       tier: "flagged",
@@ -82,31 +75,10 @@ export async function verifyQuery(rawQuery: string): Promise<VerifyResult> {
   }
 
   // 2. Check known listings by exact reference number, then fuzzy title/issuer match.
-  const exactMatch = await db
-    .select()
-    .from(listings)
-    .where(eq(listings.referenceNumber, query))
-    .limit(1);
-
-  let matched = exactMatch[0];
-
-  if (!matched) {
-    const fuzzyMatch = await db
-      .select()
-      .from(listings)
-      .where(
-        or(
-          like(listings.referenceNumber, `%${query}%`),
-          like(listings.title, `%${query}%`),
-          like(listings.issuingBody, `%${query}%`)
-        )
-      )
-      .limit(1);
-    matched = fuzzyMatch[0];
-  }
+  const matched = (await findListingExact(query)) ?? (await findListingFuzzy(query));
 
   if (matched) {
-    const source = allSources.find((s) => s.id === matched!.sourceId);
+    const source = allSources.find((s) => s.id === matched.sourceId);
     return {
       tier: "confirmed",
       query,
@@ -138,9 +110,5 @@ export async function verifyQuery(rawQuery: string): Promise<VerifyResult> {
 }
 
 export async function logSearch(query: string, tier: VerifyTier) {
-  await db.insert(searchLogs).values({
-    query,
-    resultTier: tier,
-    searchedAt: new Date().toISOString(),
-  });
+  await repoInsertSearchLog(query, tier);
 }

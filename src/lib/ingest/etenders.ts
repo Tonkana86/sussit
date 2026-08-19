@@ -21,15 +21,14 @@
  * network is restricted to an allowlist that does not include
  * ocds-api.etenders.gov.za. The API contract and field shapes below were
  * confirmed independently via a separate tool with broader network access,
- * and the sample records in src/db/seed.ts were captured from real, verbatim
- * API responses. Before relying on this in production, run one real sync
- * from an environment with normal internet access and confirm the shapes
- * still match (the portal is explicitly in beta and could change).
+ * and the sample records in src/db/seedData.ts were captured from real,
+ * verbatim API responses. Before relying on this in production, run one real
+ * sync from the deployed environment (which has normal internet access) and
+ * confirm the shapes still match (the portal is explicitly in beta and could
+ * change).
  */
 
-import { db } from "@/db/client";
-import { listings, sources } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { getSourceByName, upsertListingByReference, updateSourceLastSync } from "@/db/repo";
 
 const OCDS_BASE_URL = "https://ocds-api.etenders.gov.za";
 const ETENDERS_SOURCE_NAME = "eTenders (National Treasury)";
@@ -110,23 +109,18 @@ function mapReleaseToListing(release: OcdsRelease, sourceId: number) {
 }
 
 /**
- * Sync recent tenders from eTenders into the local `listings` table.
- * Upserts by (referenceNumber) — re-running is safe.
+ * Sync recent tenders from eTenders into the `listings` table.
+ * Upserts by referenceNumber — re-running is safe.
  *
- * NOT exercised end-to-end in this build environment; see module docstring.
+ * NOT exercised end-to-end in the build sandbox; see module docstring.
  */
 export async function syncEtenders(options?: { daysBack?: number }) {
   const daysBack = options?.daysBack ?? 14;
 
-  const [source] = await db
-    .select()
-    .from(sources)
-    .where(eq(sources.name, ETENDERS_SOURCE_NAME))
-    .limit(1);
-
+  const source = await getSourceByName(ETENDERS_SOURCE_NAME);
   if (!source) {
     throw new Error(
-      `Source "${ETENDERS_SOURCE_NAME}" not found — run the seed script first.`
+      `Source "${ETENDERS_SOURCE_NAME}" not found — run the DB setup/seed step first.`
     );
   }
 
@@ -147,21 +141,7 @@ export async function syncEtenders(options?: { daysBack?: number }) {
     for (const release of page.releases) {
       const mapped = mapReleaseToListing(release, source.id);
       if (!mapped) continue;
-
-      const existing = await db
-        .select()
-        .from(listings)
-        .where(eq(listings.referenceNumber, mapped.referenceNumber))
-        .limit(1);
-
-      if (existing[0]) {
-        await db
-          .update(listings)
-          .set(mapped)
-          .where(eq(listings.referenceNumber, mapped.referenceNumber));
-      } else {
-        await db.insert(listings).values(mapped);
-      }
+      await upsertListingByReference(mapped);
       totalUpserted += 1;
     }
 
@@ -169,10 +149,7 @@ export async function syncEtenders(options?: { daysBack?: number }) {
     pageNumber += 1;
   }
 
-  await db
-    .update(sources)
-    .set({ lastSuccessfulSync: new Date().toISOString() })
-    .where(eq(sources.id, source.id));
+  await updateSourceLastSync(source.id, new Date().toISOString());
 
   return { totalUpserted };
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db/client";
-import { scamReports } from "@/db/schema";
+import { insertScamReport } from "@/db/repo";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -29,7 +28,7 @@ export async function POST(request: NextRequest) {
     ? String(body.reporterEmail).trim().slice(0, 320)
     : null;
 
-  await db.insert(scamReports).values({
+  await insertScamReport({
     reportedReferenceNumber,
     reportedCompanyName: reportedCompanyName.slice(0, 300),
     description: description.slice(0, 5000),
@@ -37,6 +36,7 @@ export async function POST(request: NextRequest) {
     evidenceUrls: null,
     reporterEmail,
     status: "pending", // always queued for moderation — never auto-published
+    moderatorNotes: null,
     createdAt: new Date().toISOString(),
   });
 
