@@ -32,12 +32,17 @@ export const SEED_SOURCES: SeedSource[] = [
       "from an environment with normal internet access to refresh.",
   },
   {
+    // NOTE: src/lib/ingest/dpsa.ts looks this source up by name — keep the
+    // two strings identical or the sync will create a duplicate source row.
     name: "DPSA Public Service Vacancy Circulars",
-    baseUrl: "https://www.dpsa.gov.za",
-    ingestionMethod: "pdf-parse",
+    baseUrl: "https://www.dpsa.gov.za/newsroom/psvc/",
+    ingestionMethod: "pdf-scrape",
     trustTier: "official",
     lastSuccessfulSync: null,
-    notes: "Not yet connected — still [VERIFY]. See project spec Section 4/9.",
+    notes:
+      "Connected (best-effort/beta) — parsed from DPSA's weekly Public Service Vacancy " +
+      "Circular PDF, since DPSA publishes no API or structured feed. See " +
+      "src/lib/ingest/dpsa.ts for the parser's deliberate skip-if-ambiguous behaviour.",
   },
 ];
 

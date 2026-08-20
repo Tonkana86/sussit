@@ -38,7 +38,12 @@ import { getOrCreateSource, upsertListingByReference } from "@/db/repo";
 import { updateSourceLastSync } from "@/db/repo";
 
 const INDEX_URL = "https://www.dpsa.gov.za/newsroom/psvc/";
-const SOURCE_NAME = "DPSA Public Service Vacancy Circular";
+// Must match the name already used in src/db/seedData.ts's SEED_SOURCES
+// EXACTLY (note the plural "Circulars"), because that row already exists in
+// the production database from the original seed. A mismatch here would make
+// getOrCreateSource insert a second, near-identical DPSA source row, so the
+// public "sources checked" list would show the same source twice.
+const SOURCE_NAME = "DPSA Public Service Vacancy Circulars";
 
 const BROWSER_HEADERS = {
   "User-Agent":
