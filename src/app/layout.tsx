@@ -41,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Tender data comes from National Treasury&apos;s public eTenders system. Job vacancy
               checking (including DPSA public service posts) is still being connected.
             </p>
+            <p>© 2026 Tonkana Holdings (Pty) Ltd</p>
           </div>
         </footer>
       </body>

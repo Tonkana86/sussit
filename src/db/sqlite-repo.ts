@@ -134,3 +134,9 @@ export async function deleteDemoScamReports(): Promise<number> {
     .run();
   return demos.length;
 }
+
+export async function deleteSourceByName(name: string): Promise<number> {
+  const rows = getDb().select().from(schema.sources).where(eq(schema.sources.name, name)).all();
+  getDb().delete(schema.sources).where(eq(schema.sources.name, name)).run();
+  return rows.length;
+}

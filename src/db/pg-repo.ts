@@ -210,3 +210,10 @@ export async function deleteDemoScamReports(): Promise<number> {
   await db.delete(schema.scamReports).where(eq(schema.scamReports.reportedReferenceNumber, "TND-9999-FAKE"));
   return demos.length;
 }
+
+export async function deleteSourceByName(name: string): Promise<number> {
+  const db = getDb();
+  const rows = await db.select().from(schema.sources).where(eq(schema.sources.name, name));
+  await db.delete(schema.sources).where(eq(schema.sources.name, name));
+  return rows.length;
+}

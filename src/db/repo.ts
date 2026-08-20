@@ -29,5 +29,6 @@ export const listAllScamReports = impl.listAllScamReports;
 export const updateScamReportStatus = impl.updateScamReportStatus;
 export const deletePlaceholderListings = impl.deletePlaceholderListings;
 export const deleteDemoScamReports = impl.deleteDemoScamReports;
+export const deleteSourceByName = impl.deleteSourceByName;
 
 export const isUsingPg = usingPg;
