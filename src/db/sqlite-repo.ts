@@ -4,6 +4,8 @@ import { eq, like, or } from "drizzle-orm";
 import path from "path";
 import * as schema from "./schema";
 import type { ListingRow, NewListing, NewScamReport, ScamReportRow, SourceRow } from "./types";
+import { rankFuzzyMatches } from "./fuzzyRank";
+import { findApprovedMatchInMemory } from "./scamMatch";
 
 // Lazily created — this module is statically imported by repo.ts alongside
 // pg-repo.ts regardless of which one is actually selected, so opening the
@@ -41,18 +43,15 @@ export async function insertSource(data: Omit<SourceRow, "id">): Promise<SourceR
 }
 
 export async function findApprovedScamReportMatch(query: string): Promise<ScamReportRow | null> {
+  // See src/db/scamMatch.ts — matching (including phone-format-tolerant
+  // contact-detail matching) happens in application code, identically to
+  // the Postgres repo.
   const rows = getDb()
     .select()
     .from(schema.scamReports)
-    .where(
-      or(
-        like(schema.scamReports.reportedReferenceNumber, `%${query}%`),
-        like(schema.scamReports.reportedCompanyName, `%${query}%`)
-      )
-    )
-    .all();
-  const approved = rows.find((r) => r.status === "approved");
-  return (approved as unknown as ScamReportRow) ?? null;
+    .where(eq(schema.scamReports.status, "approved"))
+    .all() as unknown as ScamReportRow[];
+  return findApprovedMatchInMemory(rows, query);
 }
 
 export async function findListingExact(ref: string): Promise<ListingRow | null> {
@@ -63,7 +62,15 @@ export async function findListingExact(ref: string): Promise<ListingRow | null> 
   return (rows[0] as unknown as ListingRow) ?? null;
 }
 
-export async function findListingFuzzy(query: string): Promise<ListingRow | null> {
+/**
+ * Returns every listing whose reference number, title, or issuing body
+ * contains `query`, ranked so a match in the reference number (strongest
+ * signal) sorts before a title match, which sorts before an issuing-body-only
+ * match — so the most relevant result is always first without hiding the
+ * rest. Capped at 10 to keep results page-able and not need to render 30 rows
+ * for a common department name.
+ */
+export async function findListingsFuzzy(query: string): Promise<ListingRow[]> {
   const rows = getDb()
     .select()
     .from(schema.listings)
@@ -74,8 +81,9 @@ export async function findListingFuzzy(query: string): Promise<ListingRow | null
         like(schema.listings.issuingBody, `%${query}%`)
       )
     )
-    .all();
-  return (rows[0] as unknown as ListingRow) ?? null;
+    .all() as unknown as ListingRow[];
+
+  return rankFuzzyMatches(rows, query).slice(0, 10);
 }
 
 export async function insertSearchLog(query: string, tier: string): Promise<void> {

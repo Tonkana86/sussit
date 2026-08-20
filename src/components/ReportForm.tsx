@@ -5,6 +5,10 @@ import { useState } from "react";
 export function ReportForm() {
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  // Captured once, when the form first renders — sent back on submit so the
+  // server can reject submissions that arrive suspiciously fast (a strong
+  // signal of an automated bot rather than a person reading the form).
+  const [formRenderedAt] = useState(() => Date.now());
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,6 +23,8 @@ export function ReportForm() {
       description: data.get("description"),
       contactDetailsUsedByScammer: data.get("contactDetailsUsedByScammer"),
       reporterEmail: data.get("reporterEmail"),
+      website: data.get("website"), // honeypot — should always be empty for real users
+      formRenderedAt,
     };
 
     try {
@@ -54,6 +60,16 @@ export function ReportForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Honeypot field: hidden from real users via CSS and marked
+          aria-hidden/tabIndex=-1 so it's also skipped by screen readers and
+          keyboard navigation. Bots that blindly fill every input will
+          populate it; the server silently discards any submission where
+          it's non-empty. */}
+      <div className="absolute left-[-9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden="true">
+        <label htmlFor="website">Leave this field blank</label>
+        <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-slate-700" htmlFor="reportedCompanyName">
           Company / department name involved <span className="text-red-600">*</span>

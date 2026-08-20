@@ -8,8 +8,9 @@ export default function HomePage() {
         Not sure if that tender or job is real?
       </h1>
       <p className="mt-3 text-lg text-slate-600">
-        Type in the reference number, company, or department name. We check it against official
-        sources and a community-reported scam database — free, always.
+        Type in a reference number, company or department name — or a phone number, email, or bank
+        detail from a suspicious message. We check it against official sources and a
+        community-reported scam database — free, always.
       </p>
 
       <div className="mt-8">

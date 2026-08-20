@@ -20,7 +20,7 @@ export function SearchBox() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="e.g. RFQ-2026-DEMO-001, or a company/department name"
+        placeholder="e.g. a reference number, company/department name, phone number, or email"
         className="flex-1 rounded-lg border border-slate-300 px-4 py-3 text-base shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
         aria-label="Tender or job reference number, or company/department name"
       />

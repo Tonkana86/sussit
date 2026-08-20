@@ -4,6 +4,8 @@ import { eq, ilike, or, sql, desc } from "drizzle-orm";
 import * as schema from "./pg-schema";
 import { getPgConnectionString } from "./pg-connection";
 import type { ListingRow, NewListing, NewScamReport, ScamReportRow, SourceRow } from "./types";
+import { rankFuzzyMatches } from "./fuzzyRank";
+import { findApprovedMatchInMemory } from "./scamMatch";
 
 // Lazily created so this module can be imported without a Postgres
 // connection string being set (e.g. in the sqlite-only local dev path)
@@ -111,22 +113,15 @@ export async function getSourceByName(name: string): Promise<SourceRow | null> {
 
 export async function findApprovedScamReportMatch(query: string): Promise<ScamReportRow | null> {
   const db = getDb();
-  // Postgres's plain LIKE is case-sensitive, so "scd3701/2026" would silently
-  // fail to match a stored "SCD3701/2026" — a very plausible reason a user
-  // finds some real reference numbers but not others. ILIKE matches
-  // case-insensitively, which is what every other part of this search
-  // experience implicitly promises.
-  const rows = await db
+  // Matching (reference number, company name, AND phone/email/bank contact
+  // details, with phone-format tolerance) happens in application code — see
+  // src/db/scamMatch.ts for why. Only approved reports are fetched, which
+  // keeps this a small, cheap query even as the table grows.
+  const rows = (await db
     .select()
     .from(schema.scamReports)
-    .where(
-      or(
-        ilike(schema.scamReports.reportedReferenceNumber, `%${query}%`),
-        ilike(schema.scamReports.reportedCompanyName, `%${query}%`)
-      )
-    );
-  const approved = rows.find((r) => r.status === "approved");
-  return (approved as unknown as ScamReportRow) ?? null;
+    .where(eq(schema.scamReports.status, "approved"))) as unknown as ScamReportRow[];
+  return findApprovedMatchInMemory(rows, query);
 }
 
 export async function findListingExact(ref: string): Promise<ListingRow | null> {
@@ -136,9 +131,14 @@ export async function findListingExact(ref: string): Promise<ListingRow | null> 
   return (rows[0] as unknown as ListingRow) ?? null;
 }
 
-export async function findListingFuzzy(query: string): Promise<ListingRow | null> {
+/**
+ * Returns every listing whose reference number, title, or issuing body
+ * contains `query` (case-insensitive), ranked so a reference-number match
+ * sorts first. Capped at 10.
+ */
+export async function findListingsFuzzy(query: string): Promise<ListingRow[]> {
   const db = getDb();
-  const rows = await db
+  const rows = (await db
     .select()
     .from(schema.listings)
     .where(
@@ -147,8 +147,9 @@ export async function findListingFuzzy(query: string): Promise<ListingRow | null
         ilike(schema.listings.title, `%${query}%`),
         ilike(schema.listings.issuingBody, `%${query}%`)
       )
-    );
-  return (rows[0] as unknown as ListingRow) ?? null;
+    )) as unknown as ListingRow[];
+
+  return rankFuzzyMatches(rows, query).slice(0, 10);
 }
 
 export async function insertSearchLog(query: string, tier: string): Promise<void> {

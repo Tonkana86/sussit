@@ -19,12 +19,27 @@ const STATUS_STYLES: Record<string, string> = {
   rejected: "bg-slate-200 text-slate-600",
 };
 
+interface ActionState {
+  running: boolean;
+  result: string | null;
+  isError: boolean;
+}
+
+const IDLE_ACTION: ActionState = { running: false, result: null, isError: false };
+
 export default function AdminReportsPage() {
   const [key, setKey] = useState("");
   const [keyInput, setKeyInput] = useState("");
   const [reports, setReports] = useState<ScamReport[] | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [actions, setActions] = useState<Record<string, ActionState>>({
+    "sync-etenders": IDLE_ACTION,
+    "sync-cape-town-awards": IDLE_ACTION,
+    "sync-dpsa": IDLE_ACTION,
+    "sync-all": IDLE_ACTION,
+    "cleanup-demo": IDLE_ACTION,
+  });
 
   useEffect(() => {
     const stored = sessionStorage.getItem("sussit_admin_key");
@@ -35,7 +50,7 @@ export default function AdminReportsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/reports?key=${encodeURIComponent(activeKey)}`);
+      const res = await fetch("/api/admin/reports", { headers: { "X-Admin-Key": activeKey } });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "Failed to load reports.");
@@ -54,6 +69,30 @@ export default function AdminReportsPage() {
     if (key) loadReports(key);
   }, [key, loadReports]);
 
+  async function runAction(endpoint: string) {
+    setActions((prev) => ({ ...prev, [endpoint]: { running: true, result: null, isError: false } }));
+    try {
+      const res = await fetch(`/api/admin/${endpoint}`, { headers: { "X-Admin-Key": key } });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body.ok === false) {
+        throw new Error(body.error ? `${body.error}${body.cause ? ` (${body.cause})` : ""}` : "Failed.");
+      }
+      setActions((prev) => ({
+        ...prev,
+        [endpoint]: { running: false, result: JSON.stringify(body), isError: false },
+      }));
+    } catch (err) {
+      setActions((prev) => ({
+        ...prev,
+        [endpoint]: {
+          running: false,
+          result: err instanceof Error ? err.message : "Something went wrong.",
+          isError: true,
+        },
+      }));
+    }
+  }
+
   function handleKeySubmit(e: React.FormEvent) {
     e.preventDefault();
     sessionStorage.setItem("sussit_admin_key", keyInput);
@@ -62,9 +101,9 @@ export default function AdminReportsPage() {
 
   async function setStatus(id: number, status: string) {
     try {
-      const res = await fetch(`/api/admin/reports?key=${encodeURIComponent(key)}`, {
+      const res = await fetch("/api/admin/reports", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Admin-Key": key },
         body: JSON.stringify({ id, status }),
       });
       if (!res.ok) throw new Error("Failed to update.");
@@ -117,6 +156,44 @@ export default function AdminReportsPage() {
         submission before approving — publishing an unverified accusation carries real defamation
         risk if it turns out to be wrong.
       </p>
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+        <p className="font-semibold text-slate-900">Data sync &amp; maintenance</p>
+        <p className="mt-1 text-sm text-slate-600">
+          These run automatically every day — use these buttons only to trigger one immediately
+          (e.g. right after a deploy) instead of waiting for the next scheduled run.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          {(
+            [
+              { endpoint: "sync-all", label: "Sync everything now" },
+              { endpoint: "sync-etenders", label: "Sync eTenders only" },
+              { endpoint: "sync-cape-town-awards", label: "Sync Cape Town Awards only" },
+              { endpoint: "sync-dpsa", label: "Sync DPSA vacancies only" },
+              { endpoint: "cleanup-demo", label: "Run demo-data cleanup" },
+            ] as const
+          ).map(({ endpoint, label }) => (
+            <div key={endpoint}>
+              <button
+                onClick={() => runAction(endpoint)}
+                disabled={actions[endpoint].running}
+                className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {actions[endpoint].running ? "Running..." : label}
+              </button>
+              {actions[endpoint].result && (
+                <p
+                  className={`mt-1 max-w-xs break-words text-xs ${
+                    actions[endpoint].isError ? "text-red-600" : "text-teal-700"
+                  }`}
+                >
+                  {actions[endpoint].result}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {loading && <p className="mt-6 text-sm text-slate-500">Loading...</p>}
       {error && <p className="mt-6 text-sm text-red-600">{error}</p>}

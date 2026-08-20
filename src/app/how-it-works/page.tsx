@@ -46,12 +46,27 @@ export default function HowItWorksPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">2. Jobs — not connected yet</h2>
+          <h2 className="text-xl font-semibold text-slate-900">2. Jobs — partially connected, and an honest limitation</h2>
           <p className="mt-2">
-            Job vacancy checking, including DPSA (Department of Public Service and Administration)
-            public service posts, is not connected yet. If you search a job reference number
-            today, sussit will honestly tell you it couldn&apos;t find it — it will never invent or
-            guess a result just to give you an answer.
+            sussit now pulls government job postings from DPSA&apos;s (Department of Public
+            Service and Administration) weekly Public Service Vacancy Circular, so a real,
+            current government job reference number has a good chance of being confirmed. This is
+            a newer, best-effort source — DPSA only publishes it as a PDF document rather than a
+            proper data feed, so we extract listings from that document automatically and skip
+            anything ambiguous rather than risk showing you a wrong result.
+          </p>
+          <p className="mt-2">
+            More importantly: research into how South African job scams actually work found that
+            <strong> most job scams don&apos;t reference a real, checkable number at all</strong> —
+            they usually arrive over WhatsApp or social media, often from a free email address,
+            asking for money upfront. A reference-number search genuinely can&apos;t catch those,
+            no matter how complete our data gets. For that far more common case, use the{" "}
+            <Link href="/learn" className="text-teal-700 underline font-medium">
+              red-flag checklist
+            </Link>{" "}
+            instead — and you can also search a phone number, email address, or bank detail from
+            a suspicious message directly in the box on the home page, which checks it against
+            what other people have reported.
           </p>
         </section>
 
@@ -79,8 +94,10 @@ export default function HowItWorksPage() {
           <h2 className="text-xl font-semibold text-slate-900">4. Scam reports</h2>
           <p className="mt-2">
             Separately from official sources, sussit also checks your search against a database of
-            scams reported by other users. Every report is reviewed by a moderator before it&apos;s
-            marked as confirmed — nothing submitted through the{" "}
+            scams reported by other users — matching against the reported company/department name,
+            reference number, and any phone number, email, or bank detail included in the report.
+            Every report is reviewed by a moderator before it&apos;s marked as confirmed — nothing
+            submitted through the{" "}
             <Link href="/report" className="text-teal-700 underline font-medium">
               report a scam
             </Link>{" "}
@@ -91,11 +108,11 @@ export default function HowItWorksPage() {
         <section>
           <h2 className="text-xl font-semibold text-slate-900">5. Sources we plan to add</h2>
           <p className="mt-2">
-            DPSA job vacancies, other provincial and municipal tender portals, and state-owned
-            enterprise procurement listings (Eskom, Transnet, SANRAL, and others) are on the
-            roadmap. Most of these don&apos;t offer a public data feed the way eTenders and Cape
-            Town do, so adding them takes more work — this page will be updated honestly as each
-            one actually goes live, not before.
+            Other provincial and municipal tender portals, and state-owned enterprise procurement
+            listings (Eskom, Transnet, SANRAL, and others) are on the roadmap. Most of these don&apos;t
+            offer a public data feed the way eTenders, Cape Town, and DPSA do, so adding them takes
+            more work — this page will be updated honestly as each one actually goes live, not
+            before.
           </p>
         </section>
       </div>

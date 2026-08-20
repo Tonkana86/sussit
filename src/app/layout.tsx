@@ -41,8 +41,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Treasury, DPSA, or any government department.
             </p>
             <p>
-              Tender data comes from National Treasury&apos;s public eTenders system. Job vacancy
-              checking (including DPSA public service posts) is still being connected.
+              Tender data comes from National Treasury&apos;s eTenders system and the City of Cape
+              Town&apos;s open data portal. Government job vacancies come from DPSA&apos;s weekly
+              circular (best-effort, beta) — most job scams don&apos;t reference anything
+              checkable at all, so also see our{" "}
+              <Link href="/learn" className="underline hover:text-teal-700">
+                scam red-flag checklist
+              </Link>
+              .
+            </p>
+            <p className="flex gap-3">
+              <Link href="/privacy" className="hover:text-teal-700 underline">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-teal-700 underline">
+                Terms of Use
+              </Link>
             </p>
             <p>© 2026 Tonkana Holdings (Pty) Ltd</p>
           </div>
