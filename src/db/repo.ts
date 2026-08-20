@@ -30,5 +30,31 @@ export const updateScamReportStatus = impl.updateScamReportStatus;
 export const deletePlaceholderListings = impl.deletePlaceholderListings;
 export const deleteDemoScamReports = impl.deleteDemoScamReports;
 export const deleteSourceByName = impl.deleteSourceByName;
+export const insertSource = impl.insertSource;
 
 export const isUsingPg = usingPg;
+
+/**
+ * Fetches a source by name, creating it first if it doesn't exist yet.
+ * Lets an ingestion pipeline register its own source row on first run,
+ * instead of requiring every new data source to be added to the seed data
+ * and re-run through /api/admin/init-db.
+ */
+export async function getOrCreateSource(data: {
+  name: string;
+  baseUrl: string;
+  ingestionMethod: string;
+  trustTier: string;
+  notes?: string | null;
+}) {
+  const existing = await getSourceByName(data.name);
+  if (existing) return existing;
+  return insertSource({
+    name: data.name,
+    baseUrl: data.baseUrl,
+    ingestionMethod: data.ingestionMethod,
+    trustTier: data.trustTier,
+    lastSuccessfulSync: null,
+    notes: data.notes ?? null,
+  });
+}

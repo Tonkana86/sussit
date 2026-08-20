@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, like, or, sql, desc } from "drizzle-orm";
+import { eq, ilike, or, sql, desc } from "drizzle-orm";
 import * as schema from "./pg-schema";
 import { getPgConnectionString } from "./pg-connection";
 import type { ListingRow, NewListing, NewScamReport, ScamReportRow, SourceRow } from "./types";
@@ -111,13 +111,18 @@ export async function getSourceByName(name: string): Promise<SourceRow | null> {
 
 export async function findApprovedScamReportMatch(query: string): Promise<ScamReportRow | null> {
   const db = getDb();
+  // Postgres's plain LIKE is case-sensitive, so "scd3701/2026" would silently
+  // fail to match a stored "SCD3701/2026" — a very plausible reason a user
+  // finds some real reference numbers but not others. ILIKE matches
+  // case-insensitively, which is what every other part of this search
+  // experience implicitly promises.
   const rows = await db
     .select()
     .from(schema.scamReports)
     .where(
       or(
-        like(schema.scamReports.reportedReferenceNumber, `%${query}%`),
-        like(schema.scamReports.reportedCompanyName, `%${query}%`)
+        ilike(schema.scamReports.reportedReferenceNumber, `%${query}%`),
+        ilike(schema.scamReports.reportedCompanyName, `%${query}%`)
       )
     );
   const approved = rows.find((r) => r.status === "approved");
@@ -126,7 +131,8 @@ export async function findApprovedScamReportMatch(query: string): Promise<ScamRe
 
 export async function findListingExact(ref: string): Promise<ListingRow | null> {
   const db = getDb();
-  const rows = await db.select().from(schema.listings).where(eq(schema.listings.referenceNumber, ref));
+  // ILIKE with no wildcards is a case-insensitive equality check.
+  const rows = await db.select().from(schema.listings).where(ilike(schema.listings.referenceNumber, ref));
   return (rows[0] as unknown as ListingRow) ?? null;
 }
 
@@ -137,9 +143,9 @@ export async function findListingFuzzy(query: string): Promise<ListingRow | null
     .from(schema.listings)
     .where(
       or(
-        like(schema.listings.referenceNumber, `%${query}%`),
-        like(schema.listings.title, `%${query}%`),
-        like(schema.listings.issuingBody, `%${query}%`)
+        ilike(schema.listings.referenceNumber, `%${query}%`),
+        ilike(schema.listings.title, `%${query}%`),
+        ilike(schema.listings.issuingBody, `%${query}%`)
       )
     );
   return (rows[0] as unknown as ListingRow) ?? null;

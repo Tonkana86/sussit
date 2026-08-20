@@ -30,6 +30,16 @@ export async function getSourceByName(name: string): Promise<SourceRow | null> {
   return (rows[0] as unknown as SourceRow) ?? null;
 }
 
+export async function insertSource(data: Omit<SourceRow, "id">): Promise<SourceRow> {
+  const info = getDb().insert(schema.sources).values(data).run();
+  const rows = getDb()
+    .select()
+    .from(schema.sources)
+    .where(eq(schema.sources.id, Number(info.lastInsertRowid)))
+    .all();
+  return rows[0] as unknown as SourceRow;
+}
+
 export async function findApprovedScamReportMatch(query: string): Promise<ScamReportRow | null> {
   const rows = getDb()
     .select()
@@ -46,7 +56,10 @@ export async function findApprovedScamReportMatch(query: string): Promise<ScamRe
 }
 
 export async function findListingExact(ref: string): Promise<ListingRow | null> {
-  const rows = getDb().select().from(schema.listings).where(eq(schema.listings.referenceNumber, ref)).all();
+  // Plain `like` with no wildcards is a case-insensitive equality check for
+  // ASCII in SQLite (unlike `eq`, which is case-sensitive) — kept consistent
+  // with the case-insensitive ILIKE match used on the Postgres side.
+  const rows = getDb().select().from(schema.listings).where(like(schema.listings.referenceNumber, ref)).all();
   return (rows[0] as unknown as ListingRow) ?? null;
 }
 

@@ -3,6 +3,10 @@
     {
       "path": "/api/admin/sync-etenders",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/admin/sync-cape-town-awards",
+      "schedule": "15 3 * * *"
     }
   ]
 }

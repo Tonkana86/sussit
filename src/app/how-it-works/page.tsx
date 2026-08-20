@@ -21,16 +21,27 @@ export default function HowItWorksPage() {
         <section>
           <h2 className="text-xl font-semibold text-slate-900">1. Tenders — connected and live</h2>
           <p className="mt-2">
-            Tender data comes directly from National Treasury&apos;s public eTenders system (the
-            Open Contracting Data Standard API National Treasury publishes for the eTenders
-            portal). Every day, sussit automatically pulls the latest tender releases from that
-            API and adds them to what it checks against — so a tender that was published recently
-            should be picked up within a day.
+            Tender data currently comes from two official, free, public sources:
           </p>
+          <ul className="mt-2 list-disc pl-6 space-y-1">
+            <li>
+              <strong>National Treasury eTenders</strong> — the Open Contracting Data Standard API
+              National Treasury publishes for the central eTenders portal. Covers tenders from
+              government departments and entities that publish through eTenders.
+            </li>
+            <li>
+              <strong>City of Cape Town&apos;s open data portal</strong> — a public, no-login feed of
+              City of Cape Town supply chain tender award decisions. This covers award
+              decisions specifically (who won, and the outcome), not tenders currently open for
+              bidding, so a match here confirms the reference number is real, not that it&apos;s
+              still open.
+            </li>
+          </ul>
           <p className="mt-2">
-            When you search a tender reference number, company, or department name, we check it
-            against everything we&apos;ve pulled from that feed. If it matches, we tell you which
-            source confirmed it and link back to the original record where possible.
+            Every day, sussit automatically pulls the latest data from both feeds. When you search
+            a tender reference number, company, or department name, we check it against everything
+            pulled from these sources. If it matches, we tell you which source confirmed it and
+            link back to the original record where possible.
           </p>
         </section>
 
@@ -80,9 +91,11 @@ export default function HowItWorksPage() {
         <section>
           <h2 className="text-xl font-semibold text-slate-900">5. Sources we plan to add</h2>
           <p className="mt-2">
-            DPSA job vacancies, provincial and municipal tender portals, and state-owned enterprise
-            procurement listings are all on the roadmap. This page will be updated as each one goes
-            live.
+            DPSA job vacancies, other provincial and municipal tender portals, and state-owned
+            enterprise procurement listings (Eskom, Transnet, SANRAL, and others) are on the
+            roadmap. Most of these don&apos;t offer a public data feed the way eTenders and Cape
+            Town do, so adding them takes more work — this page will be updated honestly as each
+            one actually goes live, not before.
           </p>
         </section>
       </div>
