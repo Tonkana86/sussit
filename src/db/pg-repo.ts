@@ -2,20 +2,25 @@ import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, like, or, sql } from "drizzle-orm";
 import * as schema from "./pg-schema";
+import { getPgConnectionString } from "./pg-connection";
 import type { ListingRow, NewListing, NewScamReport, ScamReportRow, SourceRow } from "./types";
 
-// Lazily created so this module can be imported without DATABASE_URL being
-// set (e.g. in the sqlite-only local dev path) without throwing at import time.
+// Lazily created so this module can be imported without a Postgres
+// connection string being set (e.g. in the sqlite-only local dev path)
+// without throwing at import time.
 let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
 function getDb() {
   if (!_db) {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL is not set — cannot use the Postgres repo.");
+    const connectionString = getPgConnectionString();
+    if (!connectionString) {
+      throw new Error(
+        "No Postgres connection string found (checked DATABASE_URL, POSTGRES_URL, DATABASE_URL_UNPOOLED) — cannot use the Postgres repo."
+      );
     }
     _pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
       ssl: { rejectUnauthorized: false }, // most managed PG providers (Neon/Supabase/Vercel Postgres) require TLS
     });
     _db = drizzle(_pool, { schema });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, countSources, insertSource, insertScamReport, upsertListingByReference } from "@/db/pg-repo";
+import { getPgConnectionString } from "@/db/pg-connection";
 import { SEED_SOURCES, SEED_LISTINGS, SEED_SCAM_REPORTS } from "@/db/seedData";
 
 /**
@@ -36,9 +37,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing or incorrect key." }, { status: 401 });
   }
 
-  if (!process.env.DATABASE_URL) {
+  if (!getPgConnectionString()) {
     return NextResponse.json(
-      { error: "DATABASE_URL is not set — connect a Postgres database in Vercel first." },
+      {
+        error:
+          "No Postgres connection string found (checked DATABASE_URL, POSTGRES_URL, DATABASE_URL_UNPOOLED) — connect a Postgres database in Vercel first.",
+      },
       { status: 500 }
     );
   }

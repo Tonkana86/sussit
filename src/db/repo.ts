@@ -10,8 +10,9 @@
  */
 import * as sqliteRepo from "./sqlite-repo";
 import * as pgRepo from "./pg-repo";
+import { getPgConnectionString } from "./pg-connection";
 
-const usingPg = !!process.env.DATABASE_URL;
+const usingPg = !!getPgConnectionString();
 
 const impl = usingPg ? pgRepo : sqliteRepo;
 
