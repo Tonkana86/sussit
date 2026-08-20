@@ -5,9 +5,9 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16">
       <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 mb-8 text-sm text-amber-900">
-        <strong>Early development build.</strong> Live government data isn&apos;t connected yet —
-        only demo/placeholder records exist right now. Don&apos;t rely on this for real decisions
-        until it says otherwise.
+        <strong>Early access.</strong> Tenders are checked against National Treasury&apos;s live
+        eTenders data. Job vacancy checking is still being connected — for now, only a demo job
+        record exists so you can see how that will look.
       </div>
 
       <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">

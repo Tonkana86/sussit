@@ -25,5 +25,9 @@ export const insertSearchLog = impl.insertSearchLog;
 export const insertScamReport = impl.insertScamReport;
 export const upsertListingByReference = impl.upsertListingByReference;
 export const updateSourceLastSync = impl.updateSourceLastSync;
+export const listAllScamReports = impl.listAllScamReports;
+export const updateScamReportStatus = impl.updateScamReportStatus;
+export const deletePlaceholderListings = impl.deletePlaceholderListings;
+export const deleteDemoScamReports = impl.deleteDemoScamReports;
 
 export const isUsingPg = usingPg;

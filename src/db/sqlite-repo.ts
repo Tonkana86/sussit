@@ -98,3 +98,39 @@ export async function updateSourceLastSync(sourceId: number, timestamp: string):
     .where(eq(schema.sources.id, sourceId))
     .run();
 }
+
+export async function listAllScamReports(): Promise<ScamReportRow[]> {
+  const rows = getDb()
+    .select()
+    .from(schema.scamReports)
+    .orderBy(schema.scamReports.id)
+    .all();
+  return rows.reverse() as unknown as ScamReportRow[]; // newest first
+}
+
+export async function updateScamReportStatus(id: number, status: string): Promise<void> {
+  getDb().update(schema.scamReports).set({ status }).where(eq(schema.scamReports.id, id)).run();
+}
+
+export async function deletePlaceholderListings(): Promise<number> {
+  const placeholders = getDb()
+    .select()
+    .from(schema.listings)
+    .where(eq(schema.listings.isPlaceholder, true))
+    .all();
+  getDb().delete(schema.listings).where(eq(schema.listings.isPlaceholder, true)).run();
+  return placeholders.length;
+}
+
+export async function deleteDemoScamReports(): Promise<number> {
+  const demos = getDb()
+    .select()
+    .from(schema.scamReports)
+    .where(eq(schema.scamReports.reportedReferenceNumber, "TND-9999-FAKE"))
+    .all();
+  getDb()
+    .delete(schema.scamReports)
+    .where(eq(schema.scamReports.reportedReferenceNumber, "TND-9999-FAKE"))
+    .run();
+  return demos.length;
+}

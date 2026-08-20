@@ -38,8 +38,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Treasury, DPSA, or any government department.
             </p>
             <p>
-              This is an early development build. Some listings shown are placeholder demo data,
-              clearly marked as such — live government data integration is in progress.
+              Tender data comes from National Treasury&apos;s public eTenders system. Job vacancy
+              checking (including DPSA public service posts) is still being connected.
             </p>
           </div>
         </footer>

@@ -39,14 +39,6 @@ export const SEED_SOURCES: SeedSource[] = [
     lastSuccessfulSync: null,
     notes: "Not yet connected — still [VERIFY]. See project spec Section 4/9.",
   },
-  {
-    name: "Demo/Placeholder Source",
-    baseUrl: "https://example.invalid",
-    ingestionMethod: "manual",
-    trustTier: "community",
-    lastSuccessfulSync: null, // filled in at seed time with "now"
-    notes: "Used only to seed the one remaining fabricated demo job listing.",
-  },
 ];
 
 export interface SeedListing {
@@ -122,19 +114,10 @@ export const SEED_LISTINGS: SeedListing[] = [
     ingestedAt: "2026-08-19T10:21:34Z",
     isPlaceholder: false,
   },
-  {
-    type: "job",
-    referenceNumber: "DPSA-2026-DEMO-014",
-    title: "Administrative Officer: Demo Department (DEMO — DPSA not yet connected)",
-    issuingBody: "Demo National Department",
-    sourceName: "Demo/Placeholder Source",
-    sourceUrl: "https://example.invalid/jobs/DPSA-2026-DEMO-014",
-    status: "open",
-    closingDate: "2026-09-01",
-    province: "National",
-    ingestedAt: "", // filled in at seed time with "now"
-    isPlaceholder: true,
-  },
+  // No job listings yet — DPSA integration isn't connected. Do not add a
+  // fabricated placeholder here again: an earlier version of this file did,
+  // and it was seeded straight into the production database looking like a
+  // real listing until manually cleaned up (see /api/admin/cleanup-demo).
 ];
 
 export interface SeedScamReport {
@@ -149,17 +132,9 @@ export interface SeedScamReport {
   createdAt: string;
 }
 
-export const SEED_SCAM_REPORTS: SeedScamReport[] = [
-  {
-    reportedReferenceNumber: "TND-9999-FAKE",
-    reportedCompanyName: '"Ministry of Opportunities" (fabricated demo name)',
-    description:
-      "DEMO scam report: asked applicants to pay a 'registration fee' via instant EFT to confirm a tender award. No such reference number exists on any known official source.",
-    contactDetailsUsedByScammer: "demo-scammer@example.invalid",
-    evidenceUrls: null,
-    reporterEmail: null,
-    status: "approved",
-    moderatorNotes: "Seeded demo record for local development only.",
-    createdAt: "", // filled in at seed time with "now"
-  },
-];
+// No seeded scam reports — an earlier version of this file included one
+// fabricated "approved" demo report, which meant it displayed on the live
+// site as if it were a real flagged scam. Real reports now only ever enter
+// the system through the public report form (always "pending" until a human
+// moderator approves them via /admin), which is the correct flow.
+export const SEED_SCAM_REPORTS: SeedScamReport[] = [];

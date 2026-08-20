@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, like, or, sql } from "drizzle-orm";
+import { eq, like, or, sql, desc } from "drizzle-orm";
 import * as schema from "./pg-schema";
 import { getPgConnectionString } from "./pg-connection";
 import type { ListingRow, NewListing, NewScamReport, ScamReportRow, SourceRow } from "./types";
@@ -181,4 +181,32 @@ export async function insertSource(data: Omit<SourceRow, "id">): Promise<SourceR
   const db = getDb();
   const rows = await db.insert(schema.sources).values(data).returning();
   return rows[0] as unknown as SourceRow;
+}
+
+export async function listAllScamReports(): Promise<ScamReportRow[]> {
+  const db = getDb();
+  const rows = await db.select().from(schema.scamReports).orderBy(desc(schema.scamReports.id));
+  return rows as unknown as ScamReportRow[];
+}
+
+export async function updateScamReportStatus(id: number, status: string): Promise<void> {
+  const db = getDb();
+  await db.update(schema.scamReports).set({ status }).where(eq(schema.scamReports.id, id));
+}
+
+export async function deletePlaceholderListings(): Promise<number> {
+  const db = getDb();
+  const placeholders = await db.select().from(schema.listings).where(eq(schema.listings.isPlaceholder, true));
+  await db.delete(schema.listings).where(eq(schema.listings.isPlaceholder, true));
+  return placeholders.length;
+}
+
+export async function deleteDemoScamReports(): Promise<number> {
+  const db = getDb();
+  const demos = await db
+    .select()
+    .from(schema.scamReports)
+    .where(eq(schema.scamReports.reportedReferenceNumber, "TND-9999-FAKE"));
+  await db.delete(schema.scamReports).where(eq(schema.scamReports.reportedReferenceNumber, "TND-9999-FAKE"));
+  return demos.length;
 }

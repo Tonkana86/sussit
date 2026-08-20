@@ -52,21 +52,23 @@ function run() {
     )
     .run();
 
-  db.insert(scamReports)
-    .values(
-      SEED_SCAM_REPORTS.map((r) => ({
-        reportedReferenceNumber: r.reportedReferenceNumber,
-        reportedCompanyName: r.reportedCompanyName,
-        description: r.description,
-        contactDetailsUsedByScammer: r.contactDetailsUsedByScammer,
-        evidenceUrls: r.evidenceUrls,
-        reporterEmail: r.reporterEmail,
-        status: r.status,
-        moderatorNotes: r.moderatorNotes,
-        createdAt: r.createdAt || now,
-      }))
-    )
-    .run();
+  if (SEED_SCAM_REPORTS.length > 0) {
+    db.insert(scamReports)
+      .values(
+        SEED_SCAM_REPORTS.map((r) => ({
+          reportedReferenceNumber: r.reportedReferenceNumber,
+          reportedCompanyName: r.reportedCompanyName,
+          description: r.description,
+          contactDetailsUsedByScammer: r.contactDetailsUsedByScammer,
+          evidenceUrls: r.evidenceUrls,
+          reporterEmail: r.reporterEmail,
+          status: r.status,
+          moderatorNotes: r.moderatorNotes,
+          createdAt: r.createdAt || now,
+        }))
+      )
+      .run();
+  }
 
   console.log("Seed complete.");
 }

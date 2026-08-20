@@ -1,47 +1,47 @@
-# sussit — Phase 1 MVP
+# sussit — live at sussit.co.za
 
 A platform to check whether a South African tender or job reference number is legitimate, cross-referenced against official sources and a community scam-report database.
 
-**Status: early development build, with one real data source connected and Postgres support for production deployment.**
+**Status: live in production**, with real eTenders data, automatic daily refresh, and a moderation dashboard for scam reports. Job vacancy checking (DPSA) is still not connected — see below.
 
-## Deploying this to Vercel (no CLI/terminal needed)
+## Deploying/updating this on Vercel (no CLI/terminal needed)
 
-1. **Push this code to GitHub** if you haven't already (it should already be at your `sussit` repo).
-2. **Sign up at vercel.com**, ideally via "Continue with GitHub" so it can see your repos.
-3. **Import the project**: from the Vercel dashboard, click "Add New" → "Project", and select the `sussit` repo.
-4. **Add a Postgres database**: in the project's Vercel dashboard, go to the "Storage" tab and add a Postgres database (Vercel's own integration, backed by Neon, works well and has a free tier). This automatically sets a `DATABASE_URL` (or similarly named) environment variable for you — check the exact variable name it creates and make sure it's called `DATABASE_URL` in your project's Environment Variables settings, renaming/aliasing it if Vercel named it something else.
-5. **Set one more environment variable**: `ADMIN_SETUP_KEY` — make up any long random password-like string. This protects the one-time database setup step below from randoms on the internet.
-6. **Deploy** (Vercel does this automatically on import, and on every future push to the repo).
-7. **Run the one-time database setup** by visiting, in your browser:
-   `https://<your-deployed-url>/api/admin/init-db?key=<the ADMIN_SETUP_KEY you set>`
-   This creates all the database tables and loads the starting data (the real eTenders snapshot + demo records). You only need to do this once — visiting it again is safe and won't duplicate data.
-8. **Connect your domain**: in the project's "Domains" settings, add `sussit.co.za`, then add the DNS records Vercel shows you into your GoDaddy account's DNS settings for that domain.
+This project auto-deploys whenever new code is uploaded to the `main` branch on GitHub (Tonkana86/sussit). To update it:
 
-That's the whole deploy — no terminal commands required at any point.
+1. Upload changed files via GitHub's **Add file → Upload files** (drag the whole updated folder contents in, commit to `main`).
+2. Vercel picks up the push automatically and redeploys within a minute or two.
+3. If you added/changed environment variables, trigger a manual **Redeploy** from the Deployments tab afterward — env var changes don't apply to already-built deployments.
+
+Environment variables currently in use (Settings → Environment Variables in Vercel):
+- `DATABASE_URL` / `POSTGRES_URL` / `DATABASE_URL_UNPOOLED` — whichever the Postgres integration created; the app checks all three names automatically (see `src/db/pg-connection.ts`).
+- `ADMIN_SETUP_KEY` — shared secret protecting all `/api/admin/*` endpoints and the `/admin` moderation dashboard. Keep this private; it's effectively the site's admin password.
+- `CRON_SECRET` — optional but recommended. If set, Vercel automatically sends it as a Bearer token when it triggers the scheduled eTenders sync (see `vercel.json`), which lets that scheduled job authenticate without needing `ADMIN_SETUP_KEY` embedded anywhere. Add it as a random string, same as `ADMIN_SETUP_KEY`.
 
 ## What's real vs. placeholder
 
-- The app itself (search, results, scam reporting, education page) is fully functional.
-- **eTenders is real and connected.** National Treasury runs a public, no-authentication OCDS (Open Contracting Data Standard) REST API at `https://ocds-api.etenders.gov.za`, confirmed live on 2026-08-19 by direct API calls. `src/lib/ingest/etenders.ts` implements a sync pipeline against it, and the seed data (`src/db/seedData.ts`) contains four real tender records captured verbatim from that API — real reference numbers, real municipalities/departments, real document links. These are marked `isPlaceholder: false`.
-- **DPSA (job vacancies) is still not connected.** One fabricated demo job record remains (`isPlaceholder: true`, clearly badged in the UI) purely so the "job" listing type has UI test coverage. Confirming DPSA's actual data format/access is still open work.
+- The app itself (search, results, scam reporting, education page, admin moderation dashboard) is fully functional and live.
+- **eTenders is real, connected, and auto-refreshing.** National Treasury runs a public, no-authentication OCDS (Open Contracting Data Standard) REST API at `https://ocds-api.etenders.gov.za`. `src/lib/ingest/etenders.ts` syncs against it, and `vercel.json` schedules this to run automatically once a day (03:00 UTC / 05:00 SAST) via Vercel Cron — no one needs to manually trigger it. It can still be triggered manually too: `https://sussit.co.za/api/admin/sync-etenders?key=<ADMIN_SETUP_KEY>`.
+- **All fabricated demo data has been removed** from both the live database (via a one-time `/api/admin/cleanup-demo` call) and the seed data itself (`src/db/seedData.ts`), so fresh deploys won't recreate it. Earlier versions had a demo job listing and a demo scam report seeded as "approved" (meaning it displayed publicly as if it were a real flagged scam) — both are gone now.
+- **DPSA (job vacancies) is still not connected.** There are currently zero job listings in the system — searching a real job reference number will honestly return "not found" rather than showing anything fabricated. Confirming DPSA's actual data format/access is the next real data-source project.
 - Provincial/municipal/SOE sources beyond what eTenders itself aggregates, and private-company verification, are still not connected — see the original project spec for that roadmap.
 
-## IMPORTANT — sandbox network limitation (read before assuming the pipeline "works")
+## Admin moderation dashboard
 
-This project was built in a sandboxed environment whose own outbound network is restricted to an allowlist (npm registries, GitHub, a couple of others) and could **not** reach `ocds-api.etenders.gov.za` or any Postgres hosting provider (Vercel, Neon, Supabase, Render, Netlify) directly — confirmed with direct connection attempts, all blocked at the network proxy. The eTenders API's existence, live status, response shapes, and sample data were all confirmed through a separate tool with broader (but read-only, fetch-style) network access — not by running this project's own code against the internet.
+Visit `https://sussit.co.za/admin` and sign in with the `ADMIN_SETUP_KEY` value. From there:
+- See every scam report ever submitted (pending, approved, rejected), newest first.
+- Approve a report to make it publicly visible as a flagged scam in search results.
+- Reject a report that looks unfounded, or reset one back to pending if you want to revisit it.
 
-Practical implications:
-- `src/lib/ingest/etenders.ts`, `src/db/pg-repo.ts`, and the `/api/admin/*` routes are written to verified real contracts (the OCDS API shape; standard Postgres/SQL), but have **not been executed end-to-end against a live Postgres database or the live eTenders API** from this build environment.
-- The **first real test of the Postgres path is the actual deployment** — running `/api/admin/init-db` after connecting a database in Vercel is simultaneously "setting up the database" and "the first live test that this code works." If it errors, the error message returned should say what went wrong; it's the first thing to debug.
-- The four seeded eTenders records are a **static snapshot from 2026-08-19** — they will look increasingly stale over time. Re-run `/api/admin/sync-etenders` (see below) periodically once deployed.
+This is intentionally a manual, human-in-the-loop process — reports are never auto-published, because a wrong public accusation carries real defamation risk (see project spec, Section 5). There's no user-facing sign-up here; the admin key is the only access control, so treat it like a password and don't share it publicly.
 
 ## Tech stack
 
 - **Next.js 16** (App Router, TypeScript, Tailwind CSS v4)
-- **Dual database backend**, selected automatically via the `DATABASE_URL` environment variable (see `src/db/repo.ts`):
-  - **Local dev (no `DATABASE_URL` set)**: SQLite via `better-sqlite3` + Drizzle ORM. Chosen over Prisma because Prisma's engine binaries are fetched from `binaries.prisma.sh`, which was network-blocked in the build sandbox.
-  - **Production (`DATABASE_URL` set)**: Postgres via `pg` + Drizzle ORM (`drizzle-orm/node-postgres`). This is what Vercel's database integrations provide.
-- Both backends implement the same functions (`src/db/sqlite-repo.ts` and `src/db/pg-repo.ts`), so the rest of the app (`src/lib/verify.ts`, `src/lib/ingest/etenders.ts`, the API routes) doesn't need to know or care which one is active — it always imports from `src/db/repo.ts`.
+- **Dual database backend**, auto-selected in `src/db/repo.ts` based on whether a Postgres connection string is present (checked via `src/db/pg-connection.ts`, which looks for `DATABASE_URL`, `POSTGRES_URL`, or `DATABASE_URL_UNPOOLED` in that order):
+  - **Local dev (none set)**: SQLite via `better-sqlite3` + Drizzle ORM.
+  - **Production (any set)**: Postgres via `pg` + Drizzle ORM (`drizzle-orm/node-postgres`) — this is what's actually running at sussit.co.za, backed by Neon via Vercel's Postgres integration.
+- Both backends implement the same functions (`src/db/sqlite-repo.ts` and `src/db/pg-repo.ts`), so the rest of the app never needs to know which one is active.
+- **Vercel Cron** (`vercel.json`) triggers the eTenders sync daily.
 
 ## Project structure
 
@@ -52,10 +52,13 @@ src/
     results/page.tsx                  # Verification result (server component)
     report/page.tsx                   # Scam report form page
     learn/page.tsx                    # "How to spot a scam" education page
+    admin/page.tsx                    # Key-gated scam report moderation dashboard
     api/verify/route.ts               # GET ?q=... verification endpoint
     api/reports/route.ts              # POST scam report submission (always queued as 'pending')
     api/admin/init-db/route.ts        # GET (key-protected) — one-time Postgres table creation + seeding
-    api/admin/sync-etenders/route.ts  # POST — manually trigger a real eTenders sync (not yet auth-protected — TODO before production)
+    api/admin/sync-etenders/route.ts  # GET (key or cron-protected) — real eTenders sync, runs daily via Vercel Cron
+    api/admin/reports/route.ts        # GET/POST (key-protected) — list reports / change their status
+    api/admin/cleanup-demo/route.ts   # GET (key-protected) — one-time removal of fabricated demo data
   components/
     SearchBox.tsx
     VerifyResultCard.tsx
@@ -63,15 +66,17 @@ src/
   db/
     schema.ts                         # Drizzle table definitions (SQLite dialect)
     pg-schema.ts                      # Drizzle table definitions (Postgres dialect)
+    pg-connection.ts                  # Resolves whichever Postgres env var name is actually set
     types.ts                          # Shared row types both backends return
-    seedData.ts                       # Shared seed content (real eTenders snapshot + demo records)
+    seedData.ts                       # Shared seed content — real eTenders snapshot only, no fabricated data
     sqlite-repo.ts                    # SQLite implementation of the repo functions
     pg-repo.ts                        # Postgres implementation of the repo functions + ensureSchema()
-    repo.ts                           # Picks sqlite-repo or pg-repo based on DATABASE_URL — import from here
+    repo.ts                           # Picks sqlite-repo or pg-repo — import from here, not the individual files
     client.ts                         # Raw SQLite connection (used by sqlite-repo.ts and seed.ts)
     seed.ts                           # Local SQLite dev seed script (not used in production — see init-db route)
   lib/
     verify.ts                         # Core verification logic (confidence tiers)
+    adminAuth.ts                      # Shared admin-key / cron-secret check for all /api/admin/* routes
     ingest/etenders.ts                # Real eTenders OCDS API sync pipeline
 ```
 
@@ -80,35 +85,29 @@ src/
 ```bash
 npm install
 npm run db:push     # create tables in ./data/tenderverify.db (SQLite)
-npm run db:seed     # populate real eTenders snapshot + demo job/scam-report data
+npm run db:seed     # populate real eTenders snapshot (no demo data)
 npm run dev          # http://localhost:3000
 ```
 
-No `DATABASE_URL` needs to be set for local dev — its absence is exactly what tells the app to use SQLite.
-
-To pull fresh live eTenders data instead of the static snapshot (works from any environment with real internet access, local or deployed):
-
-```bash
-curl -X POST http://localhost:3000/api/admin/sync-etenders
-```
+No `DATABASE_URL` needs to be set for local dev — its absence is exactly what tells the app to use SQLite. To test the admin dashboard locally, set `ADMIN_SETUP_KEY=anything` in your shell before running `npm run dev`, then visit `/admin` and sign in with that value.
 
 ## Verification logic (src/lib/verify.ts)
 
 Three confidence tiers, deliberately conservative per the product spec:
 
-- **confirmed** — exact or fuzzy match against a `listings` row. Real eTenders matches say so explicitly; the one remaining demo job record is clearly badged as fabricated.
-- **flagged** — matches an *approved* row in `scam_reports`. Pending/rejected reports never surface publicly.
-- **not_found** — no match anywhere. The UI explicitly says this doesn't mean "confirmed scam" — it may just mean the relevant source isn't integrated yet. This framing matters both for user trust and to limit defamation/liability exposure (see project spec, Section 5).
+- **confirmed** — exact or fuzzy match against a `listings` row.
+- **flagged** — matches an *approved* row in `scam_reports`. Pending/rejected reports never surface publicly — see the admin dashboard above.
+- **not_found** — no match anywhere. The UI explicitly says this doesn't mean "confirmed scam" — it may just mean the relevant source isn't integrated yet (this is currently true for ALL job searches, since DPSA isn't connected). This framing matters both for user trust and to limit defamation/liability exposure (see project spec, Section 5).
 
 ## Not yet built (next phases, per the original spec)
 
-- Live-verified eTenders sync in an actual production run (see sandbox limitation above), plus DPSA and other source pipelines.
-- Public scam-report database / moderation dashboard (reports currently land in the DB as `pending` with no admin UI to review them yet — that's the next thing to build).
+- DPSA job vacancy integration (currently zero job listings exist).
+- Provincial/municipal/SOE sources beyond eTenders' own aggregation, and private-company verification.
 - User accounts, alerts/subscriptions, browse-listings pages, public API.
-- POPIA-compliant privacy policy, Information Officer registration, and legal review of the report-publishing model — needed before Phase 2 (public scam database) goes live with real user-submitted data.
-- Auth on the `/api/admin/sync-etenders` route before any production deployment (currently unprotected — anyone who finds the URL could trigger a sync; low risk since it's idempotent and read-mostly, but still worth locking down the same way `/api/admin/init-db` is).
-- Visual/brand redesign, SEO content build-out, and monetization work — all discussed but not yet started.
+- POPIA-compliant privacy policy and Information Officer registration — worth doing now that real user data (scam reports, potentially containing reporters' emails and third parties' contact details) is being collected in production.
+- Visual/brand redesign, SEO content build-out, and monetization work — discussed but not yet started.
+- Automated tests — everything so far has been verified by manual curl/browser checks; a real test suite would catch regressions faster as the codebase grows.
 
-## About the interactive demo link
+## A note on how this was built
 
-Alongside this codebase, a separate single-file HTML demo (`sussit_demo.html`) was delivered directly in conversation. It replicates the same search/report/learn UX entirely client-side, using the same real eTenders snapshot embedded as static JS data, so it can be opened and clicked through with no setup. It is a UI/UX preview only — it has no server, no database, and does not call the real API; the actual codebase in this folder is the real, functional deliverable.
+This project was built by an AI assistant (Claude) working in a sandboxed cloud environment with restricted outbound network access — it could reach npm/GitHub but not arbitrary sites like the eTenders API or Postgres hosting providers directly from its own shell. Live facts (API existence, response shapes, current DNS/hosting behavior) were verified through a separate read-only web-fetching capability, and code was written to match those verified contracts — but several pieces (the Postgres connection, the live eTenders sync, the Vercel Cron trigger) had their *first* real end-to-end test only once actually deployed, not before. That's now happened successfully for the Postgres connection and a manual eTenders sync trigger; the automatic daily Cron-triggered sync specifically has not yet been observed running on its own schedule — worth checking Vercel's Cron logs after the first scheduled 03:00 UTC run to confirm it fires and succeeds unattended.
