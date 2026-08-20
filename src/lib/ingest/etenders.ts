@@ -76,8 +76,19 @@ export async function fetchOcdsReleasesPage(params: {
   url.searchParams.set("dateFrom", params.dateFrom);
   url.searchParams.set("dateTo", params.dateTo);
 
+  // Node's built-in fetch sends no User-Agent by default, which some
+  // government-site WAFs treat as a signal of automated/bot traffic and
+  // block outright (showing up here as a generic "fetch failed" with no
+  // HTTP status at all, since the connection never completes) — even though
+  // a normal browser hitting the same URL works fine. Sending a realistic
+  // browser User-Agent avoids that.
   const res = await fetch(url.toString(), {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept-Language": "en-ZA,en;q=0.9",
+    },
   });
 
   if (!res.ok) {
