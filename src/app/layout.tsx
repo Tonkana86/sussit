@@ -27,6 +27,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/learn" className="hover:text-teal-700">
                 Spot a scam
               </Link>
+              <Link href="/how-it-works" className="hover:text-teal-700">
+                How it works
+              </Link>
             </nav>
           </div>
         </header>

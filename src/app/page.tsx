@@ -4,13 +4,6 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16">
-      <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 mb-8 text-sm text-amber-900">
-        <strong>Early access.</strong> Tenders are checked against National Treasury&apos;s live
-        eTenders data, refreshed daily. Job vacancy checking isn&apos;t connected yet — job
-        searches will honestly come back &ldquo;not found&rdquo; rather than showing anything
-        fabricated.
-      </div>
-
       <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
         Not sure if that tender or job is real?
       </h1>
@@ -53,7 +46,11 @@ export default function HomePage() {
         <Link href="/learn" className="text-teal-700 underline font-medium">
           how to spot a scam
         </Link>{" "}
-        yourself.
+        yourself. Curious how the checks actually work?{" "}
+        <Link href="/how-it-works" className="text-teal-700 underline font-medium">
+          See how sussit works
+        </Link>
+        .
       </p>
     </div>
   );

@@ -111,3 +111,12 @@ Three confidence tiers, deliberately conservative per the product spec:
 ## A note on how this was built
 
 This project was built by an AI assistant (Claude) working in a sandboxed cloud environment with restricted outbound network access — it could reach npm/GitHub but not arbitrary sites like the eTenders API or Postgres hosting providers directly from its own shell. Live facts (API existence, response shapes, current DNS/hosting behavior) were verified through a separate read-only web-fetching capability, and code was written to match those verified contracts — but several pieces (the Postgres connection, the live eTenders sync, the Vercel Cron trigger) had their *first* real end-to-end test only once actually deployed, not before. That's now happened successfully for the Postgres connection and a manual eTenders sync trigger; the automatic daily Cron-triggered sync specifically has not yet been observed running on its own schedule — worth checking Vercel's Cron logs after the first scheduled 03:00 UTC run to confirm it fires and succeeds unattended.
+
+### Fixed: real tenders not showing up in search (2026-08-20)
+
+A user reported that searching for real, currently-advertised tenders on the live eTenders portal returned "not found" on sussit. Investigated directly against the live OCDS API and found two real bugs in `src/lib/ingest/etenders.ts`:
+
+1. The release-level `date` field the API returns is the tender's original *publication* date and never changes — it is not a "last updated" timestamp. The sync job only pulled releases published in the last 14 days, so any tender published earlier than that but still open for bidding (very common — many tenders stay open 21-30+ days) was invisible to sussit even though it was still live on the real eTenders site.
+2. The API silently caps `PageSize` at 50 regardless of what's requested — the sync was requesting 100 and getting only 50 back per page with no error, so results were being dropped unnoticed.
+
+Fixed by widening the default sync window to 90 days and paginating on actual page-size (loop until a page returns fewer than 50 releases) instead of a `PageSize=100` request and an unreliable `links.next` field. Because syncing upserts rather than replaces, this is safe to re-run and each daily run only adds coverage. After deploying this fix, manually trigger `https://sussit.co.za/api/admin/sync-etenders?key=<ADMIN_SETUP_KEY>` once to immediately backfill the wider window rather than waiting for the next scheduled 03:00 UTC run.

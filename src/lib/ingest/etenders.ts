@@ -115,7 +115,16 @@ function mapReleaseToListing(release: OcdsRelease, sourceId: number) {
  * NOT exercised end-to-end in the build sandbox; see module docstring.
  */
 export async function syncEtenders(options?: { daysBack?: number }) {
-  const daysBack = options?.daysBack ?? 14;
+  // IMPORTANT: the release-level `date` field returned by the OCDS API is the
+  // tender's original PUBLICATION date — it never changes as the tender stays
+  // open. Many real tenders stay open for 21-30+ days after publication, so a
+  // narrow window (this used to default to 14 days) misses tenders that are
+  // still live and accepting bids simply because they were first published
+  // more than 14 days ago. Defaulting to 90 days here so a single daily sync
+  // reliably covers essentially every currently-open tender. Because syncing
+  // upserts (never deletes), each day's run only adds to what's already
+  // stored, so this is safe to run daily without duplicating work.
+  const daysBack = options?.daysBack ?? 90;
 
   const source = await getSourceByName(ETENDERS_SOURCE_NAME);
   if (!source) {
@@ -131,11 +140,19 @@ export async function syncEtenders(options?: { daysBack?: number }) {
 
   let pageNumber = 1;
   let totalUpserted = 0;
-  const pageSize = 100;
+  // Confirmed live against the real API: requesting PageSize=100 (or even
+  // 200) silently caps at 50 results with no error — so we request 50
+  // explicitly and paginate by incrementing PageNumber until a page comes
+  // back with fewer than 50 releases, rather than trusting a `links.next`
+  // field (which the API does not reliably provide).
+  const pageSize = 50;
 
-  // Paginate through all available releases in the date window.
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  // Paginate through all available releases in the date window. Cap at a
+  // generous number of pages as a safety net against an infinite loop if the
+  // API ever behaves unexpectedly (e.g. always returning exactly `pageSize`
+  // results).
+  const MAX_PAGES = 200;
+  while (pageNumber <= MAX_PAGES) {
     const page = await fetchOcdsReleasesPage({ pageNumber, pageSize, dateFrom, dateTo });
 
     for (const release of page.releases) {
@@ -145,7 +162,7 @@ export async function syncEtenders(options?: { daysBack?: number }) {
       totalUpserted += 1;
     }
 
-    if (!page.links?.next || page.releases.length === 0) break;
+    if (page.releases.length < pageSize) break;
     pageNumber += 1;
   }
 
